@@ -1,0 +1,6 @@
+[Count]
+Cnt=1
+[Index 0]
+Caption=DLthroughput
+Filter String=Rx Throughput;;IPERFSTDMTP;;Iperf Analysis>Statistics>DM Monitor>Rx Throughput (Mbps);;_;;1;;798010108
+Filter Type=3
