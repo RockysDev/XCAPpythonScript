@@ -1,85 +1,53 @@
 import subprocess
 import os
-import glob
-import shutil # Used for deleting folders
-import pandas as pd # you're gonna need to run 'python -m pip install pandas', because it's not part of the standard python installation
-import matplotlib.pyplot as plt
+import shutil
 
 # --- Define Your Variables ---
 XCAP_M_EXE = r"C:\Program Files (x86)\Accuver\XCAP-M\XCAP-M.exe"
-LOG_INPUT_PATH = r"C:\Users\Wireless\Documents\11-21inOfficeStationary\Mobile1"
-BASE_PROJECT_PATH = r"C:\Users\Wireless\Desktop\Project"
-BATCH_FOLDER = os.path.join(BASE_PROJECT_PATH, "Batch1")
+LOG_INPUT_PATH = r"C:\Users\Wireless\Documents\11-21inOfficeStationary\Mobile1" 
+OUTPUT_PATH = r"C:\Users\Wireless\Desktop\Project" 
 FAV_TEMPLATE = r"C:\Users\Wireless\Desktop\Project\DLThroughput.fav" 
-SAMPLING_RATE = "-500ms"
+SAMPLING_RATE = "-500ms" 
 
-# --- 1. PREP: Ensure Batch1 is Empty/Fresh ---
-if os.path.exists(BATCH_FOLDER):
+# --- PRE-RUN CLEANUP: Delete 'batch1' if it exists ---
+# We join paths safely to get: C:\Users\Wireless\Desktop\Project\batch1
+batch_folder = r"C:\Users\Wireless\Desktop\Project\Batch01"
+
+if os.path.exists(batch_folder):
+    print(f"📂 Found existing folder: {batch_folder}")
     try:
-        shutil.rmtree(BATCH_FOLDER) # Delete it if it exists to remove old data
+        shutil.rmtree(batch_folder)
+        print("🗑️  Old 'batch1' folder deleted successfully.")
     except OSError as e:
-        print(f"Error: {BATCH_FOLDER} : {e.strerror}")
+        print(f"❌ Error deleting folder: {e}")
+        # Optional: Exit script if we can't delete the old data
+        # exit(1) 
+else:
+    print("✨ No old 'batch1' folder found. Proceeding...")
 
-os.makedirs(BATCH_FOLDER) # Create a fresh, empty folder
-print(f"📁 Created fresh temporary folder: {BATCH_FOLDER}")
 
-# --- 2. EXECUTE: Run XCAP Command ---
+# --- Construct the Command ---
+# The app will now automatically recreate 'batch1' inside OUTPUT_PATH
 command = [
     XCAP_M_EXE,
-    "-CM", LOG_INPUT_PATH, BATCH_FOLDER,
+    "-CM", LOG_INPUT_PATH, OUTPUT_PATH,
     "-FEP", FAV_TEMPLATE,
     "-MG",
     SAMPLING_RATE
 ]
 
+# --- Execute the Command ---
+print("🚀 Starting XCAP-M CLI...")
 try:
-    print("⏳ Running XCAP-M (Please wait)...")
-    subprocess.run(command, check=True, capture_output=True, text=True)
-    print("✅ XCAP Export complete.")
+    # capture_output=True gets stdout/stderr, check=True raises error on non-zero exit
+    result = subprocess.run(command, check=True, capture_output=True, text=True)
 
-    # --- 3. IDENTIFY: Find the 'Crazy Name' CSV ---
-    # We use *.csv to find ANY csv file in that folder, regardless of the name
-    csv_files = glob.glob(os.path.join(BATCH_FOLDER, "*.csv"))
-
-    if not csv_files:
-        print("❌ Error: XCAP finished, but no CSV file was found in Batch1.")
-        exit()
-
-    # Grab the first one found (since you said there is only one)
-    target_file = csv_files[0]
-    print(f"👀 Found data file: {os.path.basename(target_file)}")
-
-    # --- 4. VISUALIZE: Plot the Data ---
-    # Note: The script will PAUSE here until you close the graph window.
-    print("📊 generating graph... (Close the graph window to finish and clean up)")
+    print("✅ XCAP-M command executed successfully.")
     
-    df = pd.read_csv(target_file)
-    
-    # Basic plotting (Assumes Col 0 is Time, Col 1 is Data - Adjust if needed)
-    plt.figure(figsize=(12, 6))
-    plt.plot(df.iloc[:, 0], df.iloc[:, 1], label='Data Trace')
-    plt.title(f"Trace: {os.path.basename(target_file)}")
-    plt.grid(True)
-    plt.legend()
-    
-    # This command halts the script. The cleanup code below won't run until you close the popup.
-    plt.show() 
-
-    print("📉 Graph closed.")
+    # Optional debug info
+    # print("STDOUT:\n", result.stdout)
 
 except subprocess.CalledProcessError as e:
-    print(f"❌ XCAP Failed. Code: {e.returncode}")
-    
-except Exception as e:
-    print(f"❌ An error occurred: {e}")
-
-finally:
-    # --- 5. CLEANUP: Delete the Batch1 Folder ---
-    # This block runs whether the script succeeded or failed (as long as python didn't crash hard)
-    if os.path.exists(BATCH_FOLDER):
-        print("🧹 Cleaning up...")
-        try:
-            shutil.rmtree(BATCH_FOLDER)
-            print("✨ Batch1 folder deleted. Workspace is clean.")
-        except Exception as e:
-            print(f"⚠️ Could not delete folder: {e}")
+    print(f"❌ XCAP-M command failed with error code {e.returncode}")
+    print("Command:", e.cmd)
+    print("STDERR:", e.stderr)
